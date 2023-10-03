@@ -37,6 +37,7 @@ const nbColumns = 16 * multiplier;
 const nbLines = 16 * multiplier;
 const vertices = [];
 const intPositions = [];
+const pointSize = 8;
 
 for (let i = 0; i < nbColumns; i++) {
   for (let y = 0; y < nbLines; y++) {
@@ -52,7 +53,7 @@ for (let i = 0; i < nbColumns; i++) {
 // car chaque sommet doit apparaître une fois par triangle.
 const vertices32 = new Float32Array(vertices);
 const initPositions32 = new Float32Array(intPositions);
-
+const uMousePos = new THREE.Vector3();
 // itemSize = 3 car il y a 3 valeurs (composantes) par sommet.
 geometry.setAttribute("position", new THREE.BufferAttribute(vertices32, 3));
 geometry.setAttribute(
@@ -64,13 +65,14 @@ const material = new THREE.ShaderMaterial({
   fragmentShader: fragmentShader,
   vertexShader: vertexShader,
   uniforms: {
-    uPointSize: { value: 8 },
+    uPointSize: { value: pointSize },
     uTexture: { value: texture },
     uNbLines: { value: nbLines },
     uNbColumns: { value: nbColumns },
     uProgress: { value: guiObject.progress },
     uFrequency: { value: guiObject.frequency },
     uTime: { value: 0 },
+    uMousePos: { value: uMousePos },
   },
   transparent: true,
   depthTest: false,
@@ -172,6 +174,29 @@ renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 /**
+ * Raycaster
+ */
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+document.addEventListener("mousemove", onMouseMove);
+
+let isCursorOverMesh = false;
+
+function onMouseMove(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObject(mesh);
+
+  isCursorOverMesh = intersects.length > 0;
+
+  material.uniforms.uPointSize.value = isCursorOverMesh ? 0.3 : pointSize;
+}
+
+/**
  * Animate
  */
 const clock = new THREE.Clock();
@@ -182,15 +207,12 @@ const tick = (time) => {
   const deltaTime = elapsedTime - previousTime;
   previousTime = elapsedTime;
 
-  // Update controls
   controls.update();
 
-  material.uniforms.uTime.value = time / 1000;
+  //material.uniforms.uTime.value = time;
 
-  // Render
   renderer.render(scene, camera);
 
-  // Call tick again on the next frame
   window.requestAnimationFrame(tick);
 };
 
